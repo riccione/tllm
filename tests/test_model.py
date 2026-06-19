@@ -1,0 +1,71 @@
+import pytest
+import torch
+
+from tllm.model import CausalSelfAttention, TransformerBlock, TransformerLM
+
+# Small config for fast tests
+CFG = dict(vocab_size=100, context_length=32, embed_dim=64, num_heads=4, num_layers=2, dropout=0.1)
+
+
+class TestCausalSelfAttention:
+    def test_output_shape(self):
+        attn = CausalSelfAttention(embed_dim=64, num_heads=4, context_length=32, dropout=0.0)
+        x = torch.randn(2, 10, 64)
+        out = attn(x)
+        assert out.shape == (2, 10, 64)
+
+    def test_causal_mask(self):
+        attn = CausalSelfAttention(embed_dim=64, num_heads=4, context_length=8, dropout=0.0)
+        mask = attn.mask
+        assert mask.shape == (8, 8)
+        assert torch.all(mask == torch.tril(torch.ones(8, 8)))
+
+    def test_invalid_head_dim(self):
+        with pytest.raises(AssertionError):
+            CausalSelfAttention(embed_dim=65, num_heads=4, context_length=32)
+
+
+class TestTransformerBlock:
+    def test_output_shape(self):
+        block = TransformerBlock(embed_dim=64, num_heads=4, context_length=32, dropout=0.0)
+        x = torch.randn(2, 10, 64)
+        out = block(x)
+        assert out.shape == (2, 10, 64)
+
+
+class TestTransformerLM:
+    def test_forward_without_targets(self):
+        model = TransformerLM(**CFG)
+        idx = torch.randint(0, 100, (2, 10))
+        logits, loss = model(idx)
+        assert logits.shape == (2, 10, 100)
+        assert loss is None
+
+    def test_forward_with_targets(self):
+        model = TransformerLM(**CFG)
+        idx = torch.randint(0, 100, (2, 10))
+        targets = torch.randint(0, 100, (2, 10))
+        logits, loss = model(idx, targets)
+        assert logits.shape == (2, 10, 100)
+        assert loss.shape == ()
+        assert loss.item() > 0
+
+    def test_sequence_too_long(self):
+        model = TransformerLM(**CFG)
+        idx = torch.randint(0, 100, (1, 64))
+        with pytest.raises(AssertionError, match="Sequence too long"):
+            model(idx)
+
+    def test_parameter_count(self):
+        model = TransformerLM(**CFG)
+        num_params = sum(p.numel() for p in model.parameters())
+        assert num_params > 0
+
+    def test_gradients_flow(self):
+        model = TransformerLM(**CFG)
+        idx = torch.randint(0, 100, (1, 10))
+        targets = torch.randint(0, 100, (1, 10))
+        _, loss = model(idx, targets)
+        loss.backward()
+        for p in model.parameters():
+            assert p.grad is not None
