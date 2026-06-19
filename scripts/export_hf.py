@@ -11,7 +11,7 @@ from pathlib import Path
 
 import torch
 
-from model import TransformerLM
+from tllm import TransformerLM
 
 
 def main():
