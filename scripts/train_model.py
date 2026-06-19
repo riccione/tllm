@@ -16,6 +16,8 @@ from tllm import TransformerLM
 # -------------------------
 SEED = 1337
 torch.manual_seed(SEED)
+if torch.cuda.is_available():
+    torch.cuda.manual_seed(SEED)
 random.seed(SEED)
 
 # -------------------------
@@ -42,7 +44,7 @@ EVAL_INTERVAL = 500
 LOG_INTERVAL = 100
 
 TRAIN_SPLIT = 0.9
-DEVICE = "cpu"
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 os.makedirs(OUT_DIR, exist_ok=True)
 
@@ -53,6 +55,7 @@ sp = spm.SentencePieceProcessor(model_file=TOKENIZER_FILE)
 VOCAB_SIZE = sp.get_piece_size()
 
 print(f"Vocab size: {VOCAB_SIZE}")
+print(f"Device: {DEVICE}")
 
 # -------------------------
 # Load & tokenize data
