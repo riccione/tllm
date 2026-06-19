@@ -2,12 +2,13 @@
 minimal LLM training script
 """
 
-import os
-import time
 import json
+import os
 import random
-import torch
+import time
+
 import sentencepiece as spm
+import torch
 
 from tllm import TransformerLM
 
@@ -39,7 +40,7 @@ LR = 3e-4
 WEIGHT_DECAY = 0.1
 GRAD_CLIP = 1.0
 
-MAX_STEPS = 4000          # <-- MAIN STOPPING CONDITION
+MAX_STEPS = 4000  # <-- MAIN STOPPING CONDITION
 EVAL_INTERVAL = 500
 LOG_INTERVAL = 100
 
@@ -60,7 +61,7 @@ print(f"Device: {DEVICE}")
 # -------------------------
 # Load & tokenize data
 # -------------------------
-with open(DATA_FILE, "r", encoding="utf-8") as f:
+with open(DATA_FILE, encoding="utf-8") as f:
     text = f.read()
 
 tokens = sp.encode(text, out_type=int)
@@ -73,15 +74,17 @@ val_tokens = tokens[split_idx:]
 print(f"Train tokens: {len(train_tokens):,}")
 print(f"Val tokens:   {len(val_tokens):,}")
 
+
 # -------------------------
 # Batch sampler
 # -------------------------
 def get_batch(split):
     data = train_tokens if split == "train" else val_tokens
     ix = torch.randint(0, len(data) - CONTEXT_LEN - 1, (BATCH_SIZE,))
-    x = torch.stack([data[i:i+CONTEXT_LEN] for i in ix])
-    y = torch.stack([data[i+1:i+CONTEXT_LEN+1] for i in ix])
+    x = torch.stack([data[i : i + CONTEXT_LEN] for i in ix])
+    y = torch.stack([data[i + 1 : i + CONTEXT_LEN + 1] for i in ix])
     return x.to(DEVICE), y.to(DEVICE)
+
 
 @torch.no_grad()
 def estimate_loss():
@@ -97,6 +100,7 @@ def estimate_loss():
     model.train()
     return losses
 
+
 # -------------------------
 # Model
 # -------------------------
@@ -108,11 +112,7 @@ model = TransformerLM(
     num_layers=NUM_LAYERS,
     dropout=DROPOUT,
 ).to(DEVICE)
-optimizer = torch.optim.AdamW(
-    model.parameters(),
-    lr=LR,
-    weight_decay=WEIGHT_DECAY
-)
+optimizer = torch.optim.AdamW(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
 
 num_params = sum(p.numel() for p in model.parameters())
 print(f"Model parameters: {num_params / 1e6:.2f}M")
@@ -140,17 +140,13 @@ for step in range(1, MAX_STEPS + 1):
         print(
             f"step {step:5d} | "
             f"loss {loss.item():.4f} | "
-            f"tokens {tokens_seen/1e6:.2f}M | "
+            f"tokens {tokens_seen / 1e6:.2f}M | "
             f"{tps:.0f} tok/s"
         )
 
     if step % EVAL_INTERVAL == 0:
         losses = estimate_loss()
-        print(
-            f"[eval] step {step} | "
-            f"train {losses['train']:.4f} | "
-            f"val {losses['val']:.4f}"
-        )
+        print(f"[eval] step {step} | train {losses['train']:.4f} | val {losses['val']:.4f}")
 
         if losses["val"] < best_val_loss:
             best_val_loss = losses["val"]
@@ -176,4 +172,3 @@ with open(os.path.join(OUT_DIR, "config.json"), "w") as f:
     )
 
 print("Model artifacts saved to models/base/")
-

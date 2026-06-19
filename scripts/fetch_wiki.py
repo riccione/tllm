@@ -1,10 +1,11 @@
-from datasets import load_dataset
 from pathlib import Path
+
+from datasets import load_dataset
 
 OUT = Path("data/raw/wiki_raw.txt")
 OUT.parent.mkdir(parents=True, exist_ok=True)
 
-MAX_ARTICLES = 5000   # adjust freely (1000–10000 is fine)
+MAX_ARTICLES = 5000  # adjust freely (1000–10000 is fine)
 
 print("Downloading Wikipedia (streaming, English)...")
 
@@ -29,5 +30,4 @@ with OUT.open("w", encoding="utf-8") as f:
         if i + 1 >= MAX_ARTICLES:
             break
 
-print(f"Saved {i+1} articles to {OUT}")
-
+print(f"Saved {i + 1} articles to {OUT}")
