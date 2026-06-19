@@ -1,4 +1,4 @@
-# scripts/make_wiki_5mb.py
+# scripts/make_wiki_2mb.py
 
 import os
 from datasets import load_dataset
@@ -13,7 +13,7 @@ if os.path.exists(OUT_FILE):
     print(f"{OUT_FILE} already exists, skipping.")
     os._exit(0)
 
-print("Streaming Wikipedia and creating 5MB corpus...")
+print("Streaming Wikipedia and creating 2MB corpus...")
 
 dataset = load_dataset(
     "wikimedia/wikipedia",
