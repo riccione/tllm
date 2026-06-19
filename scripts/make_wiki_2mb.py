@@ -1,6 +1,7 @@
 # scripts/make_wiki_2mb.py
 
 import os
+import sys
 from datasets import load_dataset
 
 RAW_DIR = "data/raw"
@@ -11,7 +12,7 @@ MAX_CHARS = 2_000_000
 
 if os.path.exists(OUT_FILE):
     print(f"{OUT_FILE} already exists, skipping.")
-    os._exit(0)
+    sys.exit(0)
 
 print("Streaming Wikipedia and creating 2MB corpus...")
 
@@ -40,8 +41,7 @@ with open(OUT_FILE, "w", encoding="utf-8") as f:
         if written >= MAX_CHARS:
             break
 
-print(f"Done. Wrote ~{written / 1e6:.2f} MB to {OUT_FILE}")
+del dataset
 
-# HARD EXIT to avoid HF + Python 3.13 shutdown crash
-os._exit(0)
+print(f"Done. Wrote ~{written / 1e6:.2f} MB to {OUT_FILE}")
 
