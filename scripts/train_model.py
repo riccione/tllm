@@ -3,14 +3,15 @@ minimal LLM training script
 """
 
 import os
+import sys
 import time
 import json
-import math
 import random
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
 import sentencepiece as spm
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+from model import TransformerLM
 
 # -------------------------
 # Reproducibility
@@ -96,82 +97,16 @@ def estimate_loss():
     return losses
 
 # -------------------------
-# Model definition
+# Model
 # -------------------------
-class CausalSelfAttention(nn.Module):
-    def __init__(self, embed_dim, heads):
-        super().__init__()
-        self.heads = heads
-        self.scale = (embed_dim // heads) ** -0.5
-
-        self.qkv = nn.Linear(embed_dim, embed_dim * 3)
-        self.out = nn.Linear(embed_dim, embed_dim)
-
-        self.register_buffer(
-            "mask",
-            torch.tril(torch.ones(CONTEXT_LEN, CONTEXT_LEN))
-        )
-
-    def forward(self, x):
-        B, T, C = x.size()
-        q, k, v = self.qkv(x).chunk(3, dim=-1)
-
-        q = q.view(B, T, self.heads, C // self.heads).transpose(1, 2)
-        k = k.view(B, T, self.heads, C // self.heads).transpose(1, 2)
-        v = v.view(B, T, self.heads, C // self.heads).transpose(1, 2)
-
-        att = (q @ k.transpose(-2, -1)) * self.scale
-        att = att.masked_fill(self.mask[:T, :T] == 0, float("-inf"))
-        att = F.softmax(att, dim=-1)
-
-        out = (att @ v).transpose(1, 2).contiguous().view(B, T, C)
-        return self.out(out)
-
-class Block(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.ln1 = nn.LayerNorm(EMBED_DIM)
-        self.attn = CausalSelfAttention(EMBED_DIM, NUM_HEADS)
-        self.ln2 = nn.LayerNorm(EMBED_DIM)
-        self.mlp = nn.Sequential(
-            nn.Linear(EMBED_DIM, 4 * EMBED_DIM),
-            nn.GELU(),
-            nn.Linear(4 * EMBED_DIM, EMBED_DIM),
-            nn.Dropout(DROPOUT),
-        )
-
-    def forward(self, x):
-        x = x + self.attn(self.ln1(x))
-        x = x + self.mlp(self.ln2(x))
-        return x
-
-class GPT(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.token_emb = nn.Embedding(VOCAB_SIZE, EMBED_DIM)
-        self.pos_emb = nn.Embedding(CONTEXT_LEN, EMBED_DIM)
-        self.blocks = nn.Sequential(*[Block() for _ in range(NUM_LAYERS)])
-        self.ln_f = nn.LayerNorm(EMBED_DIM)
-        self.head = nn.Linear(EMBED_DIM, VOCAB_SIZE, bias=False)
-
-    def forward(self, idx, targets=None):
-        B, T = idx.size()
-        pos = torch.arange(0, T, device=idx.device)
-
-        x = self.token_emb(idx) + self.pos_emb(pos)
-        x = self.blocks(x)
-        x = self.ln_f(x)
-        logits = self.head(x)
-
-        loss = None
-        if targets is not None:
-            loss = F.cross_entropy(
-                logits.view(-1, VOCAB_SIZE),
-                targets.view(-1),
-            )
-        return logits, loss
-
-model = GPT().to(DEVICE)
+model = TransformerLM(
+    vocab_size=VOCAB_SIZE,
+    context_length=CONTEXT_LEN,
+    embed_dim=EMBED_DIM,
+    num_heads=NUM_HEADS,
+    num_layers=NUM_LAYERS,
+    dropout=DROPOUT,
+).to(DEVICE)
 optimizer = torch.optim.AdamW(
     model.parameters(),
     lr=LR,
