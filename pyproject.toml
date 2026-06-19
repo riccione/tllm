@@ -12,7 +12,14 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "pytest>=8.0",
     "ruff>=0.11.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = [
+    "ignore:builtin type Swig:DeprecationWarning",
 ]
 
 [tool.setuptools.packages.find]
