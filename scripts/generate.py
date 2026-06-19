@@ -4,9 +4,10 @@ Text generation script for trained model.
 
 import argparse
 import json
+
+import sentencepiece as spm
 import torch
 import torch.nn.functional as F
-import sentencepiece as spm
 
 from tllm import TransformerLM
 
@@ -74,7 +75,7 @@ def main():
     sp = spm.SentencePieceProcessor(model_file=args.tokenizer)
 
     # Load config
-    with open(args.config, "r") as f:
+    with open(args.config) as f:
         config = json.load(f)
 
     # Build model
@@ -102,4 +103,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

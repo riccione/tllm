@@ -29,7 +29,7 @@ def main():
     # -------------------------
     # Load training config
     # -------------------------
-    with open(args.config, "r") as f:
+    with open(args.config) as f:
         train_cfg = json.load(f)
 
     # Explicit mapping (no guessing)
@@ -66,17 +66,14 @@ def main():
         # llama.cpp only cares about these
         "model_type": "llama",
         "architectures": ["LLaMAForCausalLM"],
-
         "vocab_size": train_cfg["vocab_size"],
         "hidden_size": train_cfg["embed_dim"],
         "num_attention_heads": train_cfg["num_heads"],
         "num_hidden_layers": train_cfg["num_layers"],
         "max_position_embeddings": train_cfg["context_length"],
-
         # Derived values
         "intermediate_size": train_cfg["embed_dim"] * 4,
         "hidden_act": "silu",
-
         # Reasonable defaults
         "rms_norm_eps": 1e-5,
         "tie_word_embeddings": False,
@@ -96,4 +93,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

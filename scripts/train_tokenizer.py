@@ -1,6 +1,7 @@
 import os
-from datasets import load_dataset
+
 import sentencepiece as spm
+from datasets import load_dataset
 
 RAW_DIR = "data/raw"
 OUT_DIR = "data/processed"
@@ -50,7 +51,7 @@ print("Training SentencePiece tokenizer...")
 spm.SentencePieceTrainer.train(
     input=CORPUS_FILE,
     model_prefix=TOKENIZER_PREFIX,
-    vocab_size=8000,          # tiny but realistic
+    vocab_size=8000,  # tiny but realistic
     model_type="bpe",
     character_coverage=0.9995,
     bos_id=1,

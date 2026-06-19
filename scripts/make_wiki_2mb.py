@@ -2,6 +2,7 @@
 
 import os
 import sys
+
 from datasets import load_dataset
 
 RAW_DIR = "data/raw"
@@ -44,4 +45,3 @@ with open(OUT_FILE, "w", encoding="utf-8") as f:
 del dataset
 
 print(f"Done. Wrote ~{written / 1e6:.2f} MB to {OUT_FILE}")
-

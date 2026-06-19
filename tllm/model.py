@@ -1,4 +1,3 @@
-import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -15,7 +14,7 @@ class CausalSelfAttention(nn.Module):
         self.embed_dim = embed_dim
         self.num_heads = num_heads
         self.head_dim = embed_dim // num_heads
-        self.scale = self.head_dim ** -0.5
+        self.scale = self.head_dim**-0.5
 
         self.qkv = nn.Linear(embed_dim, 3 * embed_dim)
         self.out = nn.Linear(embed_dim, embed_dim)
@@ -147,4 +146,3 @@ class TransformerLM(nn.Module):
             )
 
         return logits, loss
-
