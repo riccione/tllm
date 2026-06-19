@@ -217,6 +217,7 @@ data/processed/*
 # Models
 models/*
 export/*
+hf_model/
 *.pt
 *.pth
 *.gguf
