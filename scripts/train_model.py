@@ -3,15 +3,13 @@ minimal LLM training script
 """
 
 import os
-import sys
 import time
 import json
 import random
 import torch
 import sentencepiece as spm
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from model import TransformerLM
+from tllm import TransformerLM
 
 # -------------------------
 # Reproducibility

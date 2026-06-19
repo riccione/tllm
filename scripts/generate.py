@@ -8,7 +8,7 @@ import torch
 import torch.nn.functional as F
 import sentencepiece as spm
 
-from model import TransformerLM   
+from tllm import TransformerLM
 
 
 # -------------------------

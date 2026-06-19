@@ -9,3 +9,6 @@ dependencies = [
     "sentencepiece>=0.2.1",
     "torch>=2.9.1",
 ]
+
+[tool.setuptools.packages.find]
+include = ["tllm*"]
