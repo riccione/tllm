@@ -18,6 +18,9 @@ dev = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+filterwarnings = [
+    "ignore:builtin type Swig:DeprecationWarning",
+]
 
 [tool.setuptools.packages.find]
 include = ["tllm*"]
