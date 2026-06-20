@@ -45,7 +45,7 @@ def main():
     # -------------------------
     # Load checkpoint
     # -------------------------
-    state_dict = torch.load(args.checkpoint, map_location="cpu")
+    state_dict = torch.load(args.checkpoint, map_location="cpu", weights_only=True)
 
     # Support both raw and wrapped checkpoints
     if isinstance(state_dict, dict) and "model" in state_dict:
