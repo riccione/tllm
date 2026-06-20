@@ -50,6 +50,18 @@ class TestGenerate:
         result = generate(model, sp, "test", max_new_tokens=5, top_k=10, device="cpu")
         assert isinstance(result, str)
 
+    def test_top_p_filtering(self):
+        model = TransformerLM(**CFG)
+        sp = MockTokenizer()
+        result = generate(model, sp, "test", max_new_tokens=5, top_p=0.9, device="cpu")
+        assert isinstance(result, str)
+
+    def test_top_k_and_top_p_combined(self):
+        model = TransformerLM(**CFG)
+        sp = MockTokenizer()
+        result = generate(model, sp, "test", max_new_tokens=5, top_k=50, top_p=0.9, device="cpu")
+        assert isinstance(result, str)
+
     def test_model_not_modified(self):
         model = TransformerLM(**CFG)
         model.eval()
