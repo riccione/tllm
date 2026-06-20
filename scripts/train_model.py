@@ -27,6 +27,7 @@ random.seed(SEED)
 DATA_FILE = "data/raw/wiki_2mb.txt"
 TOKENIZER_FILE = "data/processed/spm.model"
 OUT_DIR = "models/base"
+CHECKPOINT_FILE = os.path.join(OUT_DIR, "checkpoint.pt")
 
 CONTEXT_LEN = 256
 BATCH_SIZE = 16
@@ -125,13 +126,27 @@ num_params = sum(p.numel() for p in model.parameters())
 print(f"Model parameters: {num_params / 1e6:.2f}M")
 
 # -------------------------
+# Resume from checkpoint
+# -------------------------
+start_step = 1
+best_val_loss = float("inf")
+
+if os.path.exists(CHECKPOINT_FILE):
+    ckpt = torch.load(CHECKPOINT_FILE, map_location=DEVICE, weights_only=False)
+    model.load_state_dict(ckpt["model"])
+    optimizer.load_state_dict(ckpt["optimizer"])
+    scheduler.load_state_dict(ckpt["scheduler"])
+    start_step = ckpt["step"] + 1
+    best_val_loss = ckpt["best_val_loss"]
+    print(f"Resumed from step {ckpt['step']} (best val loss: {best_val_loss:.4f})")
+
+# -------------------------
 # Training loop
 # -------------------------
-best_val_loss = float("inf")
 tokens_per_step = BATCH_SIZE * CONTEXT_LEN
 start_time = time.time()
 
-for step in range(1, MAX_STEPS + 1):
+for step in range(start_step, MAX_STEPS + 1):
     x, y = get_batch("train")
     logits, loss = model(x, y)
 
@@ -162,6 +177,17 @@ for step in range(1, MAX_STEPS + 1):
             best_val_loss = losses["val"]
             torch.save(model.state_dict(), os.path.join(OUT_DIR, "model.pt"))
             print("✓ Saved new best model")
+
+        torch.save(
+            {
+                "model": model.state_dict(),
+                "optimizer": optimizer.state_dict(),
+                "scheduler": scheduler.state_dict(),
+                "step": step,
+                "best_val_loss": best_val_loss,
+            },
+            CHECKPOINT_FILE,
+        )
 
 print("Training complete.")
 
