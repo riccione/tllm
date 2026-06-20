@@ -2,6 +2,7 @@
 minimal LLM training script
 """
 
+import argparse
 import json
 import os
 import random
@@ -22,31 +23,34 @@ if torch.cuda.is_available():
 random.seed(SEED)
 
 # -------------------------
-# Config
+# CLI
 # -------------------------
-DATA_FILE = "data/raw/wiki_2mb.txt"
-TOKENIZER_FILE = "data/processed/spm.model"
-OUT_DIR = "models/base"
+parser = argparse.ArgumentParser(description="Train a small GPT model")
+
+parser.add_argument("--data", default="data/raw/wiki_2mb.txt")
+parser.add_argument("--tokenizer", default="data/processed/spm.model")
+parser.add_argument("--out", default="models/base")
+
+parser.add_argument("--context-len", type=int, default=256)
+parser.add_argument("--batch-size", type=int, default=16)
+parser.add_argument("--embed-dim", type=int, default=256)
+parser.add_argument("--num-heads", type=int, default=4)
+parser.add_argument("--num-layers", type=int, default=4)
+parser.add_argument("--dropout", type=float, default=0.1)
+
+parser.add_argument("--lr", type=float, default=3e-4)
+parser.add_argument("--weight-decay", type=float, default=0.1)
+parser.add_argument("--grad-clip", type=float, default=1.0)
+parser.add_argument("--warmup-steps", type=int, default=200)
+
+parser.add_argument("--max-steps", type=int, default=4000)
+parser.add_argument("--eval-interval", type=int, default=500)
+parser.add_argument("--log-interval", type=int, default=100)
+
+args = parser.parse_args()
+
+OUT_DIR = args.out
 CHECKPOINT_FILE = os.path.join(OUT_DIR, "checkpoint.pt")
-
-CONTEXT_LEN = 256
-BATCH_SIZE = 16
-
-EMBED_DIM = 256
-NUM_HEADS = 4
-NUM_LAYERS = 4
-DROPOUT = 0.1
-
-LR = 3e-4
-WEIGHT_DECAY = 0.1
-GRAD_CLIP = 1.0
-WARMUP_STEPS = 200
-
-MAX_STEPS = 4000  # <-- MAIN STOPPING CONDITION
-EVAL_INTERVAL = 500
-LOG_INTERVAL = 100
-
-TRAIN_SPLIT = 0.9
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 os.makedirs(OUT_DIR, exist_ok=True)
@@ -54,7 +58,7 @@ os.makedirs(OUT_DIR, exist_ok=True)
 # -------------------------
 # Tokenizer
 # -------------------------
-sp = spm.SentencePieceProcessor(model_file=TOKENIZER_FILE)
+sp = spm.SentencePieceProcessor(model_file=args.tokenizer)
 VOCAB_SIZE = sp.get_piece_size()
 
 print(f"Vocab size: {VOCAB_SIZE}")
@@ -63,12 +67,13 @@ print(f"Device: {DEVICE}")
 # -------------------------
 # Load & tokenize data
 # -------------------------
-with open(DATA_FILE, encoding="utf-8") as f:
+with open(args.data, encoding="utf-8") as f:
     text = f.read()
 
 tokens = sp.encode(text, out_type=int)
 tokens = torch.tensor(tokens, dtype=torch.long)
 
+TRAIN_SPLIT = 0.9
 split_idx = int(len(tokens) * TRAIN_SPLIT)
 train_tokens = tokens[:split_idx]
 val_tokens = tokens[split_idx:]
@@ -82,9 +87,9 @@ print(f"Val tokens:   {len(val_tokens):,}")
 # -------------------------
 def get_batch(split):
     data = train_tokens if split == "train" else val_tokens
-    ix = torch.randint(0, len(data) - CONTEXT_LEN - 1, (BATCH_SIZE,))
-    x = torch.stack([data[i : i + CONTEXT_LEN] for i in ix])
-    y = torch.stack([data[i + 1 : i + CONTEXT_LEN + 1] for i in ix])
+    ix = torch.randint(0, len(data) - args.context_len - 1, (args.batch_size,))
+    x = torch.stack([data[i : i + args.context_len] for i in ix])
+    y = torch.stack([data[i + 1 : i + args.context_len + 1] for i in ix])
     return x.to(DEVICE), y.to(DEVICE)
 
 
@@ -108,18 +113,18 @@ def estimate_loss():
 # -------------------------
 model = TransformerLM(
     vocab_size=VOCAB_SIZE,
-    context_length=CONTEXT_LEN,
-    embed_dim=EMBED_DIM,
-    num_heads=NUM_HEADS,
-    num_layers=NUM_LAYERS,
-    dropout=DROPOUT,
+    context_length=args.context_len,
+    embed_dim=args.embed_dim,
+    num_heads=args.num_heads,
+    num_layers=args.num_layers,
+    dropout=args.dropout,
 ).to(DEVICE)
-optimizer = torch.optim.AdamW(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
+optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
 scheduler = torch.optim.lr_scheduler.OneCycleLR(
     optimizer,
-    max_lr=LR,
-    total_steps=MAX_STEPS,
-    pct_start=WARMUP_STEPS / MAX_STEPS,
+    max_lr=args.lr,
+    total_steps=args.max_steps,
+    pct_start=args.warmup_steps / args.max_steps,
 )
 
 num_params = sum(p.numel() for p in model.parameters())
@@ -143,20 +148,20 @@ if os.path.exists(CHECKPOINT_FILE):
 # -------------------------
 # Training loop
 # -------------------------
-tokens_per_step = BATCH_SIZE * CONTEXT_LEN
+tokens_per_step = args.batch_size * args.context_len
 start_time = time.time()
 
-for step in range(start_step, MAX_STEPS + 1):
+for step in range(start_step, args.max_steps + 1):
     x, y = get_batch("train")
     logits, loss = model(x, y)
 
     optimizer.zero_grad()
     loss.backward()
-    torch.nn.utils.clip_grad_norm_(model.parameters(), GRAD_CLIP)
+    torch.nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip)
     optimizer.step()
     scheduler.step()
 
-    if step % LOG_INTERVAL == 0:
+    if step % args.log_interval == 0:
         elapsed = time.time() - start_time
         tokens_seen = step * tokens_per_step
         tps = tokens_seen / elapsed
@@ -169,7 +174,7 @@ for step in range(start_step, MAX_STEPS + 1):
             f"{tps:.0f} tok/s"
         )
 
-    if step % EVAL_INTERVAL == 0:
+    if step % args.eval_interval == 0:
         losses = estimate_loss()
         print(f"[eval] step {step} | train {losses['train']:.4f} | val {losses['val']:.4f}")
 
@@ -198,10 +203,10 @@ with open(os.path.join(OUT_DIR, "config.json"), "w") as f:
     json.dump(
         {
             "vocab_size": VOCAB_SIZE,
-            "context_length": CONTEXT_LEN,
-            "embed_dim": EMBED_DIM,
-            "num_heads": NUM_HEADS,
-            "num_layers": NUM_LAYERS,
+            "context_length": args.context_len,
+            "embed_dim": args.embed_dim,
+            "num_heads": args.num_heads,
+            "num_layers": args.num_layers,
         },
         f,
         indent=2,

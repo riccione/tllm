@@ -38,6 +38,8 @@ Trains a SentencePiece BPE tokenizer on the 5 MB corpus. Saves to `data/processe
 
 ```sh
 uv run python scripts/train_model.py
+uv run python scripts/train_model.py --embed-dim 512 --num-layers 8 --lr 1e-4
+uv run python scripts/train_model.py --help
 ```
 
 Trains for 4,000 steps with evaluation every 500 steps. Saves best checkpoint to `models/base/model.pt`. Automatically resumes from `models/base/checkpoint.pt` if it exists.
