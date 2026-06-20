@@ -7,7 +7,7 @@ A minimal GPT-style language model trained on Wikipedia, built from scratch in P
 - **Model**: Decoder-only transformer (GPT-2 style) with causal self-attention
 - **Tokenizer**: SentencePiece BPE (vocab size 8000)
 - **Default config**: 4 layers, 4 heads, 256 embed dim, 256 context length (~1.9M params)
-- **Training**: AdamW optimizer, gradient clipping, cosine-safe with eval-based checkpointing
+- **Training**: AdamW optimizer, gradient clipping, cosine LR with warmup, automatic checkpoint resume
 
 ## Pipeline
 
@@ -22,8 +22,8 @@ Streams 5,000 English Wikipedia articles to `data/raw/wiki_raw.txt`.
 ### 2. Create training corpus
 
 ```sh
-uv run python scripts/make_wiki_5mb.py   # ~5 MB (for tokenizer training)
-uv run python scripts/make_wiki_2mb.py   # ~2 MB (for model training)
+uv run python scripts/make_wiki.py --size 5mb   # for tokenizer training
+uv run python scripts/make_wiki.py --size 2mb   # for model training
 ```
 
 ### 3. Train tokenizer
@@ -40,7 +40,7 @@ Trains a SentencePiece BPE tokenizer on the 5 MB corpus. Saves to `data/processe
 uv run python scripts/train_model.py
 ```
 
-Trains for 4,000 steps with evaluation every 500 steps. Saves best checkpoint to `models/base/model.pt`.
+Trains for 4,000 steps with evaluation every 500 steps. Saves best checkpoint to `models/base/model.pt`. Automatically resumes from `models/base/checkpoint.pt` if it exists.
 
 ### 5. Generate text
 
@@ -70,21 +70,25 @@ Produces a HuggingFace-compatible directory for use with llama.cpp GGUF conversi
 
 ```
 tllm/
-├── model.py                  # TransformerLM definition
+├── tllm/
+│   ├── __init__.py             # Package init
+│   └── model.py                # TransformerLM definition
 ├── scripts/
-│   ├── fetch_wiki.py         # Download Wikipedia articles
-│   ├── make_wiki_2mb.py      # Create 2 MB corpus
-│   ├── make_wiki_5mb.py      # Create 5 MB corpus
-│   ├── train_tokenizer.py    # Train SentencePiece BPE
-│   ├── train_model.py        # Train the transformer
-│   ├── generate.py           # Text generation with sampling
-│   └── export_hf.py          # Export to HuggingFace format
+│   ├── fetch_wiki.py           # Download Wikipedia articles
+│   ├── make_wiki.py            # Create training corpus (2mb/5mb)
+│   ├── train_tokenizer.py      # Train SentencePiece BPE
+│   ├── train_model.py          # Train the transformer
+│   ├── generate.py             # Text generation with sampling
+│   └── export_hf.py            # Export to HuggingFace format
+├── tests/
+│   ├── test_model.py           # Model unit tests
+│   └── test_generate.py        # Generation tests
 ├── data/
-│   ├── raw/                  # Raw Wikipedia text
-│   └── processed/            # Tokenizer files
+│   ├── raw/                    # Raw Wikipedia text
+│   └── processed/              # Tokenizer files
 ├── models/
-│   └── base/                 # Trained checkpoint + config
-└── hf_model/                 # Exported HuggingFace model
+│   └── base/                   # Trained checkpoint + config
+└── hf_model/                   # Exported HuggingFace model
 ```
 
 ## Requirements
