@@ -39,6 +39,7 @@ DROPOUT = 0.1
 LR = 3e-4
 WEIGHT_DECAY = 0.1
 GRAD_CLIP = 1.0
+WARMUP_STEPS = 200
 
 MAX_STEPS = 4000  # <-- MAIN STOPPING CONDITION
 EVAL_INTERVAL = 500
@@ -113,6 +114,12 @@ model = TransformerLM(
     dropout=DROPOUT,
 ).to(DEVICE)
 optimizer = torch.optim.AdamW(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
+scheduler = torch.optim.lr_scheduler.OneCycleLR(
+    optimizer,
+    max_lr=LR,
+    total_steps=MAX_STEPS,
+    pct_start=WARMUP_STEPS / MAX_STEPS,
+)
 
 num_params = sum(p.numel() for p in model.parameters())
 print(f"Model parameters: {num_params / 1e6:.2f}M")
@@ -132,14 +139,17 @@ for step in range(1, MAX_STEPS + 1):
     loss.backward()
     torch.nn.utils.clip_grad_norm_(model.parameters(), GRAD_CLIP)
     optimizer.step()
+    scheduler.step()
 
     if step % LOG_INTERVAL == 0:
         elapsed = time.time() - start_time
         tokens_seen = step * tokens_per_step
         tps = tokens_seen / elapsed
+        lr = scheduler.get_last_lr()[0]
         print(
             f"step {step:5d} | "
             f"loss {loss.item():.4f} | "
+            f"lr {lr:.2e} | "
             f"tokens {tokens_seen / 1e6:.2f}M | "
             f"{tps:.0f} tok/s"
         )
