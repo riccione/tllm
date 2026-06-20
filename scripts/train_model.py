@@ -52,6 +52,7 @@ args = parser.parse_args()
 OUT_DIR = args.out
 CHECKPOINT_FILE = os.path.join(OUT_DIR, "checkpoint.pt")
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+USE_AMP = DEVICE == "cuda"
 
 os.makedirs(OUT_DIR, exist_ok=True)
 
@@ -101,7 +102,8 @@ def estimate_loss():
         split_losses = []
         for _ in range(50):
             x, y = get_batch(split)
-            _, loss = model(x, y)
+            with torch.amp.autocast(device_type=DEVICE, enabled=USE_AMP):
+                _, loss = model(x, y)
             split_losses.append(loss.item())
         losses[split] = sum(split_losses) / len(split_losses)
     model.train()
@@ -126,6 +128,7 @@ scheduler = torch.optim.lr_scheduler.OneCycleLR(
     total_steps=args.max_steps,
     pct_start=args.warmup_steps / args.max_steps,
 )
+scaler = torch.amp.GradScaler("cuda", enabled=USE_AMP)
 
 num_params = sum(p.numel() for p in model.parameters())
 print(f"Model parameters: {num_params / 1e6:.2f}M")
@@ -141,6 +144,7 @@ if os.path.exists(CHECKPOINT_FILE):
     model.load_state_dict(ckpt["model"])
     optimizer.load_state_dict(ckpt["optimizer"])
     scheduler.load_state_dict(ckpt["scheduler"])
+    scaler.load_state_dict(ckpt["scaler"])
     start_step = ckpt["step"] + 1
     best_val_loss = ckpt["best_val_loss"]
     print(f"Resumed from step {ckpt['step']} (best val loss: {best_val_loss:.4f})")
@@ -153,12 +157,16 @@ start_time = time.time()
 
 for step in range(start_step, args.max_steps + 1):
     x, y = get_batch("train")
-    logits, loss = model(x, y)
+
+    with torch.amp.autocast(device_type=DEVICE, enabled=USE_AMP):
+        logits, loss = model(x, y)
 
     optimizer.zero_grad()
-    loss.backward()
+    scaler.scale(loss).backward()
+    scaler.unscale_(optimizer)
     torch.nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip)
-    optimizer.step()
+    scaler.step(optimizer)
+    scaler.update()
     scheduler.step()
 
     if step % args.log_interval == 0:
@@ -188,6 +196,7 @@ for step in range(start_step, args.max_steps + 1):
                 "model": model.state_dict(),
                 "optimizer": optimizer.state_dict(),
                 "scheduler": scheduler.state_dict(),
+                "scaler": scaler.state_dict(),
                 "step": step,
                 "best_val_loss": best_val_loss,
             },
