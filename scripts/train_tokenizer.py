@@ -29,7 +29,7 @@ if not os.path.exists(CORPUS_FILE):
 
     with open(CORPUS_FILE, "w", encoding="utf-8") as f:
         for row in dataset:
-            text = row["text"].replace("\n", " ").strip()
+            text = row.get("text", "").replace("\n", " ").strip()
             if not text:
                 continue
 
