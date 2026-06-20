@@ -23,6 +23,7 @@ def generate(
     max_new_tokens=100,
     temperature=1.0,
     top_k=None,
+    top_p=None,
     device="cpu",
 ):
     model.eval()
@@ -45,6 +46,13 @@ def generate(
             v, _ = torch.topk(logits, top_k)
             logits[logits < v[:, [-1]]] = -float("inf")
 
+        if top_p is not None:
+            sorted_logits, sorted_idx = torch.sort(logits, descending=True)
+            cumulative_probs = torch.cumsum(F.softmax(sorted_logits, dim=-1), dim=-1)
+            sorted_mask = cumulative_probs - F.softmax(sorted_logits, dim=-1) >= top_p
+            sorted_logits[sorted_mask] = -float("inf")
+            logits = sorted_logits.scatter(1, sorted_idx, sorted_logits)
+
         probs = F.softmax(logits, dim=-1)
         next_id = torch.multinomial(probs, num_samples=1)
 
@@ -66,6 +74,7 @@ def main():
     parser.add_argument("--max_new_tokens", type=int, default=100)
     parser.add_argument("--temperature", type=float, default=1.0)
     parser.add_argument("--top_k", type=int, default=None)
+    parser.add_argument("--top_p", type=float, default=None)
     parser.add_argument("--device", default="cpu")
 
     args = parser.parse_args()
@@ -94,6 +103,7 @@ def main():
         max_new_tokens=args.max_new_tokens,
         temperature=args.temperature,
         top_k=args.top_k,
+        top_p=args.top_p,
         device=device,
     )
 
