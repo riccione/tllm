@@ -1,50 +1,21 @@
 import os
+import sys
 
 import sentencepiece as spm
-from datasets import load_dataset
 
 RAW_DIR = "data/raw"
 OUT_DIR = "data/processed"
-os.makedirs(RAW_DIR, exist_ok=True)
 os.makedirs(OUT_DIR, exist_ok=True)
 
 CORPUS_FILE = os.path.join(RAW_DIR, "wiki_5mb.txt")
 TOKENIZER_PREFIX = os.path.join(OUT_DIR, "spm")
 
-# -----------------------------
-# Step 1: Collect small corpus
-# -----------------------------
 if not os.path.exists(CORPUS_FILE):
-    print("Streaming Wikipedia and creating sample corpus...")
-
-    dataset = load_dataset(
-        "wikimedia/wikipedia",
-        "20231101.en",
-        split="train",
-        streaming=True,
-    )
-
-    max_chars = 5_000_000  # ~5MB, fast on CPU
-    collected = 0
-
-    with open(CORPUS_FILE, "w", encoding="utf-8") as f:
-        for row in dataset:
-            text = row.get("text", "").replace("\n", " ").strip()
-            if not text:
-                continue
-
-            f.write(text + "\n")
-            collected += len(text)
-
-            if collected >= max_chars:
-                break
-
-    print(f"Corpus written to {CORPUS_FILE} ({collected / 1e6:.1f} MB)")
-else:
-    print("Corpus already exists, skipping collection.")
+    print(f"Error: {CORPUS_FILE} not found. Run 'uv run python scripts/make_wiki.py --size 5mb' first.")
+    sys.exit(1)
 
 # -----------------------------
-# Step 2: Train SentencePiece
+# Train SentencePiece
 # -----------------------------
 print("Training SentencePiece tokenizer...")
 
