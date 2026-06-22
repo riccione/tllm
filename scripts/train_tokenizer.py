@@ -1,7 +1,16 @@
+import logging
 import os
 import sys
 
 import sentencepiece as spm
+
+log = logging.getLogger(__name__)
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(message)s",
+    datefmt="%H:%M:%S",
+)
 
 RAW_DIR = "data/raw"
 OUT_DIR = "data/processed"
@@ -11,16 +20,16 @@ CORPUS_FILE = os.path.join(RAW_DIR, "wiki_5mb.txt")
 TOKENIZER_PREFIX = os.path.join(OUT_DIR, "spm")
 
 if not os.path.exists(CORPUS_FILE):
-    print(
-        f"Error: {CORPUS_FILE} not found."
-        " Run 'uv run python scripts/make_wiki.py --size 5mb' first."
+    log.error(
+        "%s not found. Run 'uv run python scripts/make_wiki.py --size 5mb' first.",
+        CORPUS_FILE,
     )
     sys.exit(1)
 
 # -----------------------------
 # Train SentencePiece
 # -----------------------------
-print("Training SentencePiece tokenizer...")
+log.info("Training SentencePiece tokenizer...")
 
 spm.SentencePieceTrainer.train(
     input=CORPUS_FILE,
@@ -34,5 +43,5 @@ spm.SentencePieceTrainer.train(
     pad_id=3,
 )
 
-print("Tokenizer training complete.")
-print(f"Saved to {OUT_DIR}/spm.model and spm.vocab")
+log.info("Tokenizer training complete.")
+log.info("Saved to %s/spm.model and spm.vocab", OUT_DIR)

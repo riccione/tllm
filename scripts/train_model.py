@@ -4,6 +4,7 @@ minimal LLM training script
 
 import argparse
 import json
+import logging
 import os
 import random
 import time
@@ -12,6 +13,8 @@ import sentencepiece as spm
 import torch
 
 from tllm import TransformerLM
+
+log = logging.getLogger(__name__)
 
 # -------------------------
 # Reproducibility
@@ -50,6 +53,12 @@ parser.add_argument("--log-interval", type=int, default=100)
 
 args = parser.parse_args()
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(message)s",
+    datefmt="%H:%M:%S",
+)
+
 OUT_DIR = args.out
 CHECKPOINT_FILE = os.path.join(OUT_DIR, "checkpoint.pt")
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
@@ -63,8 +72,8 @@ os.makedirs(OUT_DIR, exist_ok=True)
 sp = spm.SentencePieceProcessor(model_file=args.tokenizer)
 VOCAB_SIZE = sp.get_piece_size()
 
-print(f"Vocab size: {VOCAB_SIZE}")
-print(f"Device: {DEVICE}")
+log.info("Vocab size: %d", VOCAB_SIZE)
+log.info("Device: %s", DEVICE)
 
 # -------------------------
 # Load & tokenize data
@@ -80,8 +89,8 @@ split_idx = int(len(tokens) * TRAIN_SPLIT)
 train_tokens = tokens[:split_idx]
 val_tokens = tokens[split_idx:]
 
-print(f"Train tokens: {len(train_tokens):,}")
-print(f"Val tokens:   {len(val_tokens):,}")
+log.info("Train tokens: %s", f"{len(train_tokens):,}")
+log.info("Val tokens:   %s", f"{len(val_tokens):,}")
 
 
 # -------------------------
@@ -132,7 +141,7 @@ scheduler = torch.optim.lr_scheduler.OneCycleLR(
 scaler = torch.amp.GradScaler("cuda", enabled=USE_AMP)
 
 num_params = sum(p.numel() for p in model.parameters())
-print(f"Model parameters: {num_params / 1e6:.2f}M")
+log.info("Model parameters: %.2fM", num_params / 1e6)
 
 # -------------------------
 # Resume from checkpoint
@@ -148,7 +157,7 @@ if os.path.exists(CHECKPOINT_FILE):
     scaler.load_state_dict(ckpt["scaler"])
     start_step = ckpt["step"] + 1
     best_val_loss = ckpt["best_val_loss"]
-    print(f"Resumed from step {ckpt['step']} (best val loss: {best_val_loss:.4f})")
+    log.info("Resumed from step %d (best val loss: %.4f)", ckpt["step"], best_val_loss)
 
 # -------------------------
 # Training loop
@@ -182,22 +191,23 @@ for step in range(start_step, args.max_steps + 1):
         tokens_seen = step * tokens_per_step
         tps = tokens_seen / elapsed
         lr = scheduler.get_last_lr()[0]
-        print(
-            f"step {step:5d} | "
-            f"loss {loss.item():.4f} | "
-            f"lr {lr:.2e} | "
-            f"tokens {tokens_seen / 1e6:.2f}M | "
-            f"{tps:.0f} tok/s"
+        log.info(
+            "step %5d | loss %.4f | lr %.2e | tokens %.2fM | %.0f tok/s",
+            step,
+            loss.item(),
+            lr,
+            tokens_seen / 1e6,
+            tps,
         )
 
     if step % args.eval_interval == 0:
         losses = estimate_loss()
-        print(f"[eval] step {step} | train {losses['train']:.4f} | val {losses['val']:.4f}")
+        log.info("[eval] step %d | train %.4f | val %.4f", step, losses["train"], losses["val"])
 
         if losses["val"] < best_val_loss:
             best_val_loss = losses["val"]
             torch.save(model.state_dict(), os.path.join(OUT_DIR, "model.pt"))
-            print("✓ Saved new best model")
+            log.info("Saved new best model")
 
         torch.save(
             {
@@ -211,7 +221,7 @@ for step in range(start_step, args.max_steps + 1):
             CHECKPOINT_FILE,
         )
 
-print("Training complete.")
+log.info("Training complete.")
 
 # -------------------------
 # Save config
@@ -229,4 +239,4 @@ with open(os.path.join(OUT_DIR, "config.json"), "w") as f:
         indent=2,
     )
 
-print("Model artifacts saved to models/base/")
+log.info("Model artifacts saved to %s/", OUT_DIR)

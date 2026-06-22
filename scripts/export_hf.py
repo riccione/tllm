@@ -6,6 +6,7 @@ compatible with llama.cpp GGUF conversion.
 
 import argparse
 import json
+import logging
 import shutil
 from pathlib import Path
 
@@ -13,8 +14,16 @@ import torch
 
 from tllm import TransformerLM
 
+log = logging.getLogger(__name__)
+
 
 def main():
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(message)s",
+        datefmt="%H:%M:%S",
+    )
+
     parser = argparse.ArgumentParser(description="Export TransformerLM to HF format")
     parser.add_argument("--checkpoint", required=True, help="Path to model.pt")
     parser.add_argument("--config", required=True, help="Path to training config.json")
@@ -88,7 +97,7 @@ def main():
     # -------------------------
     shutil.copy(args.tokenizer, out_dir / "tokenizer.model")
 
-    print(f"✓ Export complete → {out_dir.resolve()}")
+    log.info("Export complete -> %s", out_dir.resolve())
 
 
 if __name__ == "__main__":
