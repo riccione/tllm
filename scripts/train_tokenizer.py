@@ -11,7 +11,10 @@ CORPUS_FILE = os.path.join(RAW_DIR, "wiki_5mb.txt")
 TOKENIZER_PREFIX = os.path.join(OUT_DIR, "spm")
 
 if not os.path.exists(CORPUS_FILE):
-    print(f"Error: {CORPUS_FILE} not found. Run 'uv run python scripts/make_wiki.py --size 5mb' first.")
+    print(
+        f"Error: {CORPUS_FILE} not found."
+        " Run 'uv run python scripts/make_wiki.py --size 5mb' first."
+    )
     sys.exit(1)
 
 # -----------------------------
