@@ -17,15 +17,15 @@ from tllm import TransformerLM
 # -------------------------
 @torch.no_grad()
 def generate(
-    model,
-    sp,
-    prompt,
-    max_new_tokens=100,
-    temperature=1.0,
-    top_k=None,
-    top_p=None,
-    device="cpu",
-):
+    model: TransformerLM,
+    sp: spm.SentencePieceProcessor,
+    prompt: str,
+    max_new_tokens: int = 100,
+    temperature: float = 1.0,
+    top_k: int | None = None,
+    top_p: float | None = None,
+    device: str | torch.device = "cpu",
+) -> str:
     model.eval()
 
     # Encode prompt

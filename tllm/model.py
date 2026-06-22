@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -7,7 +9,13 @@ import torch.nn.functional as F
 # Causal Self-Attention
 # -------------------------
 class CausalSelfAttention(nn.Module):
-    def __init__(self, embed_dim, num_heads, context_length, dropout=0.0):
+    def __init__(
+        self,
+        embed_dim: int,
+        num_heads: int,
+        context_length: int,
+        dropout: float = 0.0,
+    ) -> None:
         super().__init__()
         assert embed_dim % num_heads == 0
 
@@ -26,7 +34,7 @@ class CausalSelfAttention(nn.Module):
             torch.tril(torch.ones(context_length, context_length)),
         )
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         B, T, C = x.shape
 
         qkv = self.qkv(x)
@@ -51,7 +59,13 @@ class CausalSelfAttention(nn.Module):
 # Transformer Block
 # -------------------------
 class TransformerBlock(nn.Module):
-    def __init__(self, embed_dim, num_heads, context_length, dropout):
+    def __init__(
+        self,
+        embed_dim: int,
+        num_heads: int,
+        context_length: int,
+        dropout: float,
+    ) -> None:
         super().__init__()
 
         self.ln1 = nn.LayerNorm(embed_dim)
@@ -70,7 +84,7 @@ class TransformerBlock(nn.Module):
             nn.Dropout(dropout),
         )
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = x + self.attn(self.ln1(x))
         x = x + self.mlp(self.ln2(x))
         return x
@@ -115,7 +129,7 @@ class TransformerLM(nn.Module):
 
         self.apply(self._init_weights)
 
-    def _init_weights(self, module):
+    def _init_weights(self, module: nn.Module) -> None:
         if isinstance(module, nn.Linear):
             nn.init.normal_(module.weight, mean=0.0, std=0.02)
             if module.bias is not None:
@@ -123,7 +137,11 @@ class TransformerLM(nn.Module):
         elif isinstance(module, nn.Embedding):
             nn.init.normal_(module.weight, mean=0.0, std=0.02)
 
-    def forward(self, idx, targets=None):
+    def forward(
+        self,
+        idx: torch.Tensor,
+        targets: torch.Tensor | None = None,
+    ) -> tuple[torch.Tensor, torch.Tensor | None]:
         B, T = idx.shape
         assert T <= self.context_length, "Sequence too long"
 

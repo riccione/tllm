@@ -1,4 +1,3 @@
-
 import torch
 
 from scripts.generate import generate
