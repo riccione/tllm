@@ -1,13 +1,22 @@
 import argparse
+import logging
 import os
 import sys
 
 from datasets import load_dataset
 
+log = logging.getLogger(__name__)
+
 SIZES = {"2mb": 2_000_000, "5mb": 5_000_000}
 
 
 def main():
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(message)s",
+        datefmt="%H:%M:%S",
+    )
+
     parser = argparse.ArgumentParser(description="Create a Wikipedia text corpus")
     parser.add_argument("--size", choices=SIZES, default="5mb", help="Corpus size (default: 5mb)")
     args = parser.parse_args()
@@ -19,10 +28,10 @@ def main():
     out_file = os.path.join(raw_dir, f"wiki_{args.size}.txt")
 
     if os.path.exists(out_file):
-        print(f"{out_file} already exists, skipping.")
+        log.info("%s already exists, skipping.", out_file)
         sys.exit(0)
 
-    print(f"Streaming Wikipedia and creating {args.size} corpus...")
+    log.info("Streaming Wikipedia and creating %s corpus...", args.size)
 
     dataset = load_dataset(
         "wikimedia/wikipedia",
@@ -51,7 +60,7 @@ def main():
 
     del dataset
 
-    print(f"Done. Wrote ~{written / 1e6:.2f} MB to {out_file}")
+    log.info("Done. Wrote ~%.2f MB to %s", written / 1e6, out_file)
 
 
 if __name__ == "__main__":

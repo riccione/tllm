@@ -1,13 +1,22 @@
+import logging
 from pathlib import Path
 
 from datasets import load_dataset
+
+log = logging.getLogger(__name__)
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(message)s",
+    datefmt="%H:%M:%S",
+)
 
 OUT = Path("data/raw/wiki_raw.txt")
 OUT.parent.mkdir(parents=True, exist_ok=True)
 
 MAX_ARTICLES = 5000  # adjust freely (1000–10000 is fine)
 
-print("Downloading Wikipedia (streaming, English)...")
+log.info("Downloading Wikipedia (streaming, English)...")
 
 # https://huggingface.co/datasets/wikimedia/wikipedia
 dataset = load_dataset(
@@ -30,4 +39,4 @@ with OUT.open("w", encoding="utf-8") as f:
         if i + 1 >= MAX_ARTICLES:
             break
 
-print(f"Saved {i + 1} articles to {OUT}")
+log.info("Saved %d articles to %s", i + 1, OUT)

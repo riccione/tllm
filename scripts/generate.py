@@ -4,12 +4,15 @@ Text generation script for trained model.
 
 import argparse
 import json
+import logging
 
 import sentencepiece as spm
 import torch
 import torch.nn.functional as F
 
 from tllm import TransformerLM
+
+log = logging.getLogger(__name__)
 
 
 # -------------------------
@@ -65,6 +68,12 @@ def generate(
 # Main
 # -------------------------
 def main():
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(message)s",
+        datefmt="%H:%M:%S",
+    )
+
     parser = argparse.ArgumentParser(description="Generate text from trained model")
 
     parser.add_argument("--checkpoint", required=True)
