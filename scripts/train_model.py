@@ -41,6 +41,7 @@ parser.add_argument("--dropout", type=float, default=0.1)
 parser.add_argument("--lr", type=float, default=3e-4)
 parser.add_argument("--weight-decay", type=float, default=0.1)
 parser.add_argument("--grad-clip", type=float, default=1.0)
+parser.add_argument("--grad-accum-steps", type=int, default=1)
 parser.add_argument("--warmup-steps", type=int, default=200)
 
 parser.add_argument("--max-steps", type=int, default=4000)
@@ -156,18 +157,25 @@ tokens_per_step = args.batch_size * args.context_len
 start_time = time.time()
 
 for step in range(start_step, args.max_steps + 1):
+    # Zero grad at the start of each accumulation window
+    if (step - 1) % args.grad_accum_steps == 0:
+        optimizer.zero_grad()
+
     x, y = get_batch("train")
 
     with torch.amp.autocast(device_type=DEVICE, enabled=USE_AMP):
         logits, loss = model(x, y)
+        loss = loss / args.grad_accum_steps
 
-    optimizer.zero_grad()
     scaler.scale(loss).backward()
-    scaler.unscale_(optimizer)
-    torch.nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip)
-    scaler.step(optimizer)
-    scaler.update()
-    scheduler.step()
+
+    # Step optimizer at the end of each accumulation window
+    if step % args.grad_accum_steps == 0:
+        scaler.unscale_(optimizer)
+        torch.nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip)
+        scaler.step(optimizer)
+        scaler.update()
+        scheduler.step()
 
     if step % args.log_interval == 0:
         elapsed = time.time() - start_time
