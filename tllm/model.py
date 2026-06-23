@@ -22,16 +22,15 @@ class CausalSelfAttention(nn.Module):
         self.embed_dim = embed_dim
         self.num_heads = num_heads
         self.head_dim = embed_dim // num_heads
-        self.scale = self.head_dim**-0.5
+        self.dropout_p = dropout
 
         self.qkv = nn.Linear(embed_dim, 3 * embed_dim)
         self.out = nn.Linear(embed_dim, embed_dim)
-        self.dropout = nn.Dropout(dropout)
 
-        # causal mask
+        # causal mask (True = attend, False = mask out)
         self.register_buffer(
             "mask",
-            torch.tril(torch.ones(context_length, context_length)),
+            torch.tril(torch.ones(context_length, context_length, dtype=torch.bool)),
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -44,12 +43,12 @@ class CausalSelfAttention(nn.Module):
         k = k.view(B, T, self.num_heads, self.head_dim).transpose(1, 2)
         v = v.view(B, T, self.num_heads, self.head_dim).transpose(1, 2)
 
-        att = (q @ k.transpose(-2, -1)) * self.scale
-        att = att.masked_fill(self.mask[:T, :T] == 0, float("-inf"))
-        att = F.softmax(att, dim=-1)
-        att = self.dropout(att)
+        # Flash Attention: handles scaling, softmax, and causal masking internally
+        dropout_p = self.dropout_p if self.training else 0.0
+        out = F.scaled_dot_product_attention(
+            q, k, v, attn_mask=self.mask[:T, :T], dropout_p=dropout_p
+        )
 
-        out = att @ v
         out = out.transpose(1, 2).contiguous().view(B, T, C)
 
         return self.out(out)
