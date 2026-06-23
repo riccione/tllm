@@ -1,8 +1,5 @@
 """
 Export a trained model to GGUF format for llama.cpp.
-
-Usage:
-    python scripts/export_gguf.py --checkpoint models/base/checkpoint.pt --out models/base/model.gguf
 """
 
 import argparse
@@ -10,7 +7,6 @@ import logging
 import os
 import sys
 
-import numpy as np
 import torch
 
 log = logging.getLogger(__name__)
@@ -69,15 +65,17 @@ def map_tensor_name(name: str) -> str | None:
     return None
 
 
-def split_qkv_weight(qkv_weight: torch.Tensor, head_dim: int, num_heads: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+def split_qkv_weight(
+    qkv_weight: torch.Tensor, head_dim: int, num_heads: int
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """Split combined QKV weight into separate Q, K, V weights."""
     # qkv_weight shape: (3 * embed_dim, embed_dim)
     total_dim = qkv_weight.shape[0]
     embed_dim = total_dim // 3
 
     q_weight = qkv_weight[:embed_dim]
-    k_weight = qkv_weight[embed_dim:2 * embed_dim]
-    v_weight = qkv_weight[2 * embed_dim:]
+    k_weight = qkv_weight[embed_dim : 2 * embed_dim]
+    v_weight = qkv_weight[2 * embed_dim :]
 
     return q_weight, k_weight, v_weight
 
@@ -85,8 +83,12 @@ def split_qkv_weight(qkv_weight: torch.Tensor, head_dim: int, num_heads: int) ->
 def main():
     parser = argparse.ArgumentParser(description="Export model to GGUF format")
     parser.add_argument("--checkpoint", required=True, help="Path to checkpoint.pt")
-    parser.add_argument("--out", default=None, help="Output GGUF file (default: model.gguf in checkpoint dir)")
-    parser.add_argument("--outtype", choices=["f32", "f16"], default="f16", help="Output dtype (default: f16)")
+    parser.add_argument(
+        "--out", default=None, help="Output GGUF file (default: model.gguf in checkpoint dir)"
+    )
+    parser.add_argument(
+        "--outtype", choices=["f32", "f16"], default="f16", help="Output dtype (default: f16)"
+    )
     args = parser.parse_args()
 
     logging.basicConfig(
