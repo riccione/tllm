@@ -50,6 +50,7 @@ parser.add_argument("--warmup-steps", type=int, default=200)
 parser.add_argument("--max-steps", type=int, default=4000)
 parser.add_argument("--eval-interval", type=int, default=500)
 parser.add_argument("--log-interval", type=int, default=100)
+parser.add_argument("--patience", type=int, default=None, help="Early stopping patience (eval steps)")
 
 args = parser.parse_args()
 
@@ -148,6 +149,7 @@ log.info("Model parameters: %.2fM", num_params / 1e6)
 # -------------------------
 start_step = 1
 best_val_loss = float("inf")
+patience_counter = 0
 
 if os.path.exists(CHECKPOINT_FILE):
     ckpt = torch.load(CHECKPOINT_FILE, map_location=DEVICE, weights_only=False)
@@ -157,6 +159,7 @@ if os.path.exists(CHECKPOINT_FILE):
     scaler.load_state_dict(ckpt["scaler"])
     start_step = ckpt["step"] + 1
     best_val_loss = ckpt["best_val_loss"]
+    patience_counter = ckpt.get("patience_counter", 0)
     log.info("Resumed from step %d (best val loss: %.4f)", ckpt["step"], best_val_loss)
 
 # -------------------------
@@ -206,8 +209,11 @@ for step in range(start_step, args.max_steps + 1):
 
         if losses["val"] < best_val_loss:
             best_val_loss = losses["val"]
+            patience_counter = 0
             torch.save(model.state_dict(), os.path.join(OUT_DIR, "model.pt"))
             log.info("Saved new best model")
+        else:
+            patience_counter += 1
 
         torch.save(
             {
@@ -217,9 +223,14 @@ for step in range(start_step, args.max_steps + 1):
                 "scaler": scaler.state_dict(),
                 "step": step,
                 "best_val_loss": best_val_loss,
+                "patience_counter": patience_counter,
             },
             CHECKPOINT_FILE,
         )
+
+        if args.patience is not None and patience_counter >= args.patience:
+            log.info("Early stopping at step %d (no improvement for %d eval steps)", step, args.patience)
+            break
 
 log.info("Training complete.")
 
