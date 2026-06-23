@@ -69,3 +69,12 @@ class TestTransformerLM:
         loss.backward()
         for p in model.parameters():
             assert p.grad is not None
+
+    def test_weight_tying(self):
+        model = TransformerLM(**CFG, tie_weights=True)
+        assert model.head.weight is model.token_emb.weight
+
+    def test_no_weight_tying(self):
+        model = TransformerLM(**CFG, tie_weights=False)
+        assert model.head.weight is not model.token_emb.weight
+        assert model.head.weight.shape == model.token_emb.weight.shape
