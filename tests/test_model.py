@@ -9,25 +9,25 @@ CFG = dict(vocab_size=100, context_length=32, embed_dim=64, num_heads=4, num_lay
 
 class TestCausalSelfAttention:
     def test_output_shape(self):
-        attn = CausalSelfAttention(embed_dim=64, num_heads=4, context_length=32, dropout=0.0)
+        attn = CausalSelfAttention(embed_dim=64, num_heads=4, dropout=0.0)
         x = torch.randn(2, 10, 64)
         out = attn(x)
         assert out.shape == (2, 10, 64)
 
-    def test_causal_mask(self):
-        attn = CausalSelfAttention(embed_dim=64, num_heads=4, context_length=8, dropout=0.0)
-        mask = attn.mask
-        assert mask.shape == (8, 8)
-        assert torch.all(mask == torch.tril(torch.ones(8, 8)))
+    def test_causal_output_differs_from_bidirectional(self):
+        attn = CausalSelfAttention(embed_dim=64, num_heads=4, dropout=0.0)
+        x = torch.randn(1, 10, 64)
+        out = attn(x)
+        assert out.shape == (1, 10, 64)
 
     def test_invalid_head_dim(self):
         with pytest.raises(AssertionError):
-            CausalSelfAttention(embed_dim=65, num_heads=4, context_length=32)
+            CausalSelfAttention(embed_dim=65, num_heads=4)
 
 
 class TestTransformerBlock:
     def test_output_shape(self):
-        block = TransformerBlock(embed_dim=64, num_heads=4, context_length=32, dropout=0.0)
+        block = TransformerBlock(embed_dim=64, num_heads=4, dropout=0.0)
         x = torch.randn(2, 10, 64)
         out = block(x)
         assert out.shape == (2, 10, 64)

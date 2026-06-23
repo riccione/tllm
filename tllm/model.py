@@ -13,7 +13,6 @@ class CausalSelfAttention(nn.Module):
         self,
         embed_dim: int,
         num_heads: int,
-        context_length: int,
         dropout: float = 0.0,
     ) -> None:
         super().__init__()
@@ -27,12 +26,6 @@ class CausalSelfAttention(nn.Module):
         self.qkv = nn.Linear(embed_dim, 3 * embed_dim)
         self.out = nn.Linear(embed_dim, embed_dim)
 
-        # causal mask (True = attend, False = mask out)
-        self.register_buffer(
-            "mask",
-            torch.tril(torch.ones(context_length, context_length, dtype=torch.bool)),
-        )
-
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         B, T, C = x.shape
 
@@ -43,10 +36,9 @@ class CausalSelfAttention(nn.Module):
         k = k.view(B, T, self.num_heads, self.head_dim).transpose(1, 2)
         v = v.view(B, T, self.num_heads, self.head_dim).transpose(1, 2)
 
-        # Flash Attention: handles scaling, softmax, and causal masking internally
         dropout_p = self.dropout_p if self.training else 0.0
         out = F.scaled_dot_product_attention(
-            q, k, v, attn_mask=self.mask[:T, :T], dropout_p=dropout_p
+            q, k, v, is_causal=True, dropout_p=dropout_p
         )
 
         out = out.transpose(1, 2).contiguous().view(B, T, C)
@@ -62,7 +54,6 @@ class TransformerBlock(nn.Module):
         self,
         embed_dim: int,
         num_heads: int,
-        context_length: int,
         dropout: float,
     ) -> None:
         super().__init__()
@@ -71,7 +62,6 @@ class TransformerBlock(nn.Module):
         self.attn = CausalSelfAttention(
             embed_dim,
             num_heads,
-            context_length,
             dropout,
         )
         self.ln2 = nn.LayerNorm(embed_dim)
@@ -116,7 +106,6 @@ class TransformerLM(nn.Module):
                 TransformerBlock(
                     embed_dim,
                     num_heads,
-                    context_length,
                     dropout,
                 )
                 for _ in range(num_layers)
