@@ -50,7 +50,9 @@ parser.add_argument("--warmup-steps", type=int, default=200)
 parser.add_argument("--max-steps", type=int, default=4000)
 parser.add_argument("--eval-interval", type=int, default=500)
 parser.add_argument("--log-interval", type=int, default=100)
-parser.add_argument("--patience", type=int, default=None, help="Early stopping patience (eval steps)")
+parser.add_argument(
+    "--patience", type=int, default=None, help="Early stopping patience (eval steps)"
+)
 
 args = parser.parse_args()
 
@@ -229,7 +231,11 @@ for step in range(start_step, args.max_steps + 1):
         )
 
         if args.patience is not None and patience_counter >= args.patience:
-            log.info("Early stopping at step %d (no improvement for %d eval steps)", step, args.patience)
+            log.info(
+                "Early stopping at step %d (no improvement for %d eval steps)",
+                step,
+                args.patience,
+            )
             break
 
 log.info("Training complete.")

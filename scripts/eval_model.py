@@ -4,7 +4,6 @@ Evaluate a trained model by computing perplexity on a validation set.
 
 import argparse
 import logging
-import os
 
 import sentencepiece as spm
 import torch
