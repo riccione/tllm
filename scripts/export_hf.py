@@ -82,7 +82,7 @@ def main():
         "max_position_embeddings": train_cfg["context_length"],
         # Derived values
         "intermediate_size": train_cfg["embed_dim"] * 4,
-        "hidden_act": "silu",
+        "hidden_act": "gelu",
         # Reasonable defaults
         "rms_norm_eps": 1e-5,
         "tie_word_embeddings": False,
