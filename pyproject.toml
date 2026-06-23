@@ -12,6 +12,7 @@ dependencies = [
 
 [project.optional-dependencies]
 gguf = ["gguf>=0.10.0"]
+hf = ["safetensors>=0.4.0"]
 
 [dependency-groups]
 dev = [
