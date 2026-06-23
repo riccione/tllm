@@ -91,6 +91,7 @@ class TransformerLM(nn.Module):
         num_heads: int,
         num_layers: int,
         dropout: float = 0.0,
+        tie_weights: bool = True,
     ):
         super().__init__()
 
@@ -116,6 +117,9 @@ class TransformerLM(nn.Module):
         self.head = nn.Linear(embed_dim, vocab_size, bias=False)
 
         self.apply(self._init_weights)
+
+        if tie_weights:
+            self.head.weight = self.token_emb.weight
 
     def _init_weights(self, module: nn.Module) -> None:
         if isinstance(module, nn.Linear):
